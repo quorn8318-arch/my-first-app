@@ -1,0 +1,1029 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>이차곡선 풀이 도우미</title>
+<style>
+  :root {
+    --bg: #f5f7fb;
+    --panel: #ffffff;
+    --text: #1e293b;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --accent: #2563eb;
+    --accent-soft: #e8efff;
+    --error: #b91c1c;
+    --c-curve: #2563eb;
+    --c-focus: #dc2626;
+    --c-vertex: #16a34a;
+    --c-center: #475569;
+    --c-directrix: #ea580c;
+    --c-asym: #9333ea;
+    --c-axis: #0891b2;
+    --math: "Cambria Math", "Cambria", "Times New Roman", serif;
+  }
+  * { box-sizing: border-box; }
+  html { font-size: 18px; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+    line-height: 1.5;
+  }
+  header {
+    padding: 14px 24px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  h1 { margin: 0; font-size: 1.5rem; }
+  header p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+  main {
+    display: grid;
+    gap: 16px;
+    padding: 16px;
+    max-width: 1600px;
+    margin: 0 auto;
+    grid-template-columns: 1fr;
+    grid-template-areas: "input" "graph" "result";
+  }
+  @media (min-width: 960px) {
+    main {
+      grid-template-columns: minmax(380px, 440px) 1fr;
+      grid-template-areas: "input graph" "result graph";
+      align-items: start;
+    }
+    .graph-panel { position: sticky; top: 16px; }
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 20px;
+    min-width: 0;
+  }
+  .input-panel { grid-area: input; }
+  .graph-panel { grid-area: graph; }
+  .result-panel { grid-area: result; }
+  h2 { font-size: 1.05rem; margin: 0 0 12px; }
+
+  /* 곡선 종류 선택 */
+  .types { border: 0; padding: 0; margin: 0 0 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .types legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
+  .types label {
+    display: block;
+    padding: 10px 12px;
+    border: 2px solid var(--line);
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: center;
+    font-weight: 600;
+    user-select: none;
+  }
+  .types label.wide { grid-column: 1 / -1; }
+  .types input { position: absolute; opacity: 0; pointer-events: none; }
+  .types label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  .types label:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  .template {
+    font-family: var(--math);
+    font-size: 1.15rem;
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-bottom: 14px;
+    text-align: center;
+  }
+  .template small { display: block; font-family: inherit; color: var(--muted); font-size: 0.75rem; }
+
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  .field label { display: block; font-weight: 700; font-family: var(--math); font-size: 1.1rem; }
+  .field .hint { font-family: "Malgun Gothic", system-ui, sans-serif; font-weight: 400; font-size: 0.75rem; color: var(--muted); }
+  .field input {
+    width: 100%;
+    font: inherit;
+    font-size: 1.2rem;
+    padding: 8px 10px;
+    border: 2px solid var(--line);
+    border-radius: 8px;
+  }
+  .field input:focus { outline: none; border-color: var(--accent); }
+  .field input[aria-invalid="true"] { border-color: var(--error); }
+  .field .err { color: var(--error); font-size: 0.75rem; min-height: 1.1em; }
+  .help { color: var(--muted); font-size: 0.8rem; margin: 4px 0 12px; }
+
+  .equation {
+    font-family: var(--math);
+    font-size: 1.7rem;
+    text-align: center;
+    padding: 14px 8px;
+    border: 2px dashed var(--line);
+    border-radius: 12px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .equation-label { font-weight: 700; margin: 4px 0 6px; }
+  .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; margin: 0 0.12em; line-height: 1.2; }
+  .frac > span:first-child { border-bottom: 2px solid currentColor; padding: 0 0.2em; }
+  .frac > span { padding: 0 0.2em; }
+  sup { font-size: 0.65em; }
+
+  .examples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; align-items: center; }
+  .examples span { color: var(--muted); font-size: 0.8rem; }
+  button {
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 6px 12px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* 그래프 */
+  .graph-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  .graph-head h2 { margin: 0; }
+  #graphWrap { width: 100%; }
+  canvas { display: block; width: 100%; border-radius: 10px; border: 1px solid var(--line); background: #fff; touch-action: none; }
+  .drag-hint { color: var(--muted); font-size: 0.85rem; }
+  .toggles { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; }
+  .toggles label { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; user-select: none; }
+  .toggles input { width: 20px; height: 20px; accent-color: var(--accent); }
+  .toggles i { display: inline-block; width: 22px; height: 5px; border-radius: 3px; background: var(--c); }
+  .toggles .note { color: var(--muted); font-size: 0.8rem; flex-basis: 100%; }
+
+  /* 결과 */
+  .items { list-style: none; margin: 0; padding: 0; }
+  .items li {
+    display: grid;
+    grid-template-columns: 14px 8.5em 1fr;
+    gap: 10px;
+    align-items: baseline;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .items li:last-child { border-bottom: 0; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c); align-self: center; }
+  .items .name { font-weight: 700; }
+  .items .val { font-family: var(--math); font-size: 1.2rem; transition: filter 0.2s; }
+  .items .val small { display: block; font-family: "Malgun Gothic", system-ui, sans-serif; font-size: 0.75rem; color: var(--muted); }
+  .masked .val, .steps.masked ol { filter: blur(9px); user-select: none; }
+  details { margin-top: 14px; }
+  summary { font-weight: 700; cursor: pointer; }
+  .steps ol { margin: 8px 0 0; padding-left: 1.4em; }
+  .steps li { padding: 3px 0; font-family: var(--math); font-size: 1.05rem; }
+  .steps .masknote { color: var(--muted); font-size: 0.8rem; margin: 6px 0 0; }
+  .error-box { color: var(--error); font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+  <h1>이차곡선 풀이 도우미</h1>
+  <p>표준형 방정식의 숫자를 넣으면 초점·꼭짓점·준선·점근선을 계산하고 그래프로 보여 줍니다.</p>
+</header>
+
+<main>
+  <!-- 입력 -->
+  <section class="panel input-panel" aria-labelledby="h-input">
+    <h2 id="h-input">입력</h2>
+    <fieldset class="types" id="types">
+      <legend>곡선 종류</legend>
+      <label><input type="radio" name="type" value="parabola-h">포물선 (좌우로 열림)</label>
+      <label><input type="radio" name="type" value="parabola-v">포물선 (위아래로 열림)</label>
+      <label class="wide"><input type="radio" name="type" value="ellipse">타원</label>
+      <label><input type="radio" name="type" value="hyperbola-h">쌍곡선 (좌우로 열림)</label>
+      <label><input type="radio" name="type" value="hyperbola-v">쌍곡선 (위아래로 열림)</label>
+    </fieldset>
+
+    <div class="template" id="template"></div>
+
+    <div class="fields">
+      <div class="field" data-f="c4">
+        <label for="f-c4">4p <span class="hint">우변의 계수 (y² = 8x → 8)</span></label>
+        <input id="f-c4" autocomplete="off" spellcheck="false">
+        <div class="err" id="e-c4"></div>
+      </div>
+      <div class="field" data-f="A">
+        <label for="f-A">a² <span class="hint">x항의 분모</span></label>
+        <input id="f-A" autocomplete="off" spellcheck="false">
+        <div class="err" id="e-A"></div>
+      </div>
+      <div class="field" data-f="B">
+        <label for="f-B">b² <span class="hint">y항의 분모</span></label>
+        <input id="f-B" autocomplete="off" spellcheck="false">
+        <div class="err" id="e-B"></div>
+      </div>
+      <div class="field" data-f="h">
+        <label for="f-h">h <span class="hint">(x + 1)이면 −1</span></label>
+        <input id="f-h" autocomplete="off" spellcheck="false">
+        <div class="err" id="e-h"></div>
+      </div>
+      <div class="field" data-f="k">
+        <label for="f-k">k <span class="hint">(y + 2)이면 −2</span></label>
+        <input id="f-k" autocomplete="off" spellcheck="false">
+        <div class="err" id="e-k"></div>
+      </div>
+    </div>
+    <p class="help">정수·음수(−3)·분수(1/2)·소수(0.5)를 입력할 수 있습니다. 입력값은 이 브라우저에 자동 저장됩니다.</p>
+
+    <div class="equation-label">입력한 방정식</div>
+    <div class="equation" id="equation" aria-live="polite"></div>
+
+    <div class="examples" id="examples">
+      <span>예제:</span>
+    </div>
+  </section>
+
+  <!-- 그래프 -->
+  <section class="panel graph-panel" aria-labelledby="h-graph">
+    <div class="graph-head">
+      <h2 id="h-graph">좌표평면</h2>
+      <span class="drag-hint">점선 원이 있는 초점(빨간 점)을 끌어서 옮길 수 있습니다.</span>
+    </div>
+    <div id="graphWrap"><canvas id="canvas" role="img" aria-label="이차곡선 그래프"></canvas></div>
+    <div class="toggles" id="toggles">
+      <label data-el="focus"><input type="checkbox" checked><i style="--c: var(--c-focus)"></i>초점</label>
+      <label data-el="vertex"><input type="checkbox" checked><i style="--c: var(--c-vertex)"></i>꼭짓점</label>
+      <label data-el="center"><input type="checkbox" checked><i style="--c: var(--c-center)"></i>중심</label>
+      <label data-el="directrix"><input type="checkbox" checked><i style="--c: var(--c-directrix)"></i>준선</label>
+      <label data-el="axis"><input type="checkbox" checked><i style="--c: var(--c-axis)"></i>대칭축</label>
+      <label data-el="asym"><input type="checkbox" checked><i style="--c: var(--c-asym)"></i>점근선</label>
+      <span class="note">체크를 끄면 그래프와 결과 목록에서 해당 요소가 가려집니다. 가린 요소가 있으면 풀이 과정도 함께 가려집니다.</span>
+    </div>
+  </section>
+
+  <!-- 결과 -->
+  <section class="panel result-panel" aria-labelledby="h-result">
+    <h2 id="h-result">결과</h2>
+    <div id="result"></div>
+  </section>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  const MINUS = '−';
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+  const STORAGE_KEY = 'conic-helper-v1';
+
+  /* ---------- 유리수 ---------- */
+  function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) { const t = a % b; a = b; b = t; } return a || 1; }
+  function R(n, d = 1) { if (d < 0) { n = -n; d = -d; } const g = gcd(n, d); return { n: n / g, d: d / g }; }
+  const add = (a, b) => R(a.n * b.d + b.n * a.d, a.d * b.d);
+  const sub = (a, b) => R(a.n * b.d - b.n * a.d, a.d * b.d);
+  const mul = (a, b) => R(a.n * b.n, a.d * b.d);
+  const div = (a, b) => R(a.n * b.d, a.d * b.n);
+  const absR = (a) => R(Math.abs(a.n), a.d);
+  const val = (a) => a.n / a.d;
+  const isInt = (v) => Math.abs(v - Math.round(v)) < 1e-9;
+
+  function rStr(a) {
+    const s = a.n < 0 ? MINUS : '';
+    const n = Math.abs(a.n);
+    return a.d === 1 ? s + n : s + n + '/' + a.d;
+  }
+  function dec(v) {
+    let r = Math.round(v * 100) / 100;
+    if (Object.is(r, -0)) r = 0;
+    return String(r).replace('-', MINUS);
+  }
+
+  // "3", "-2", "1/2", "0.5", "−1.5/2" 형식을 유리수로 변환
+  function decToR(s) {
+    const m = s.match(/^([+-]?)(\d*)(?:\.(\d+))?$/);
+    if (!m || (!m[2] && !m[3])) return null;
+    const frac = m[3] || '';
+    if (frac.length > 3) return null;
+    const n = parseInt((m[2] || '0') + frac, 10) * (m[1] === '-' ? -1 : 1);
+    if (!Number.isSafeInteger(n) || Math.abs(n) > 1e7) return null;
+    return R(n, 10 ** frac.length);
+  }
+  function parseNum(str) {
+    str = String(str).trim().replace(/[−–]/g, '-').replace(/\s+/g, '');
+    if (!str) return null;
+    const parts = str.split('/');
+    if (parts.length > 2) return null;
+    const nums = parts.map(decToR);
+    if (nums.includes(null)) return null;
+    if (parts.length === 2) return nums[1].n === 0 ? null : div(nums[0], nums[1]);
+    return nums[0];
+  }
+
+  /* ---------- 근호 (q·√m) ---------- */
+  function sqrtR(a) {
+    const p = a.n * a.d;
+    const v = Math.sqrt(val(a));
+    if (!Number.isSafeInteger(p) || p > 1e10) return { exact: false, v };
+    let s = 1, m = p;
+    for (let i = 2; i * i <= m; i++) {
+      while (m % (i * i) === 0) { m /= i * i; s *= i; }
+    }
+    return { exact: true, q: R(s, a.d), m, v };
+  }
+  const radMul = (rad, r) => ({ exact: rad.exact, q: rad.exact ? mul(rad.q, r) : null, m: rad.m, v: rad.v * val(r) });
+  function radStr(rad) {
+    if (!rad.exact) return dec(rad.v);
+    const q = rad.q;
+    if (rad.m === 1) return rStr(q);
+    const sign = q.n < 0 ? MINUS : '';
+    const an = Math.abs(q.n);
+    return sign + (an === 1 ? '' : an) + '√' + rad.m + (q.d === 1 ? '' : '/' + q.d);
+  }
+  const radApx = (rad) => (isInt(rad.v) ? '' : '≈ ' + dec(rad.v));
+
+  // 수치 표현 {s: 문자열, v: 값}
+  const E = (r) => ({ s: rStr(r), v: val(r) });
+  function comb(r, sgn, rad) {
+    const v = val(r) + sgn * rad.v;
+    if (!rad.exact) return { s: dec(v), v };
+    if (rad.m === 1) return E(sgn > 0 ? add(r, rad.q) : sub(r, rad.q));
+    const rs = radStr(rad);
+    if (r.n === 0) return { s: (sgn < 0 ? MINUS : '') + rs, v };
+    return { s: rStr(r) + (sgn < 0 ? ` ${MINUS} ` : ' + ') + rs, v };
+  }
+  const P = (x, y) => ({ x, y });
+  const ptS = (p) => `(${p.x.s}, ${p.y.s})`;
+  const ptApx = (p) => (isInt(p.x.v) && isInt(p.y.v) ? '' : `≈ (${dec(p.x.v)}, ${dec(p.y.v)})`);
+  const ptItem = (el, name, p) => ({ el, name, value: ptS(p), approx: ptApx(p) });
+  const ptDraw = (el, label, p) => ({ el, label, x: p.x.v, y: p.y.v });
+
+  /* ---------- 방정식 표시 ---------- */
+  const term = (v, r) => (r.n === 0 ? v : `(${v} ${r.n > 0 ? MINUS : '+'} ${rStr(absR(r))})`);
+  const sq = (s) => s + '<sup>2</sup>';
+  const frac = (n, d) => `<span class="frac"><span>${n}</span><span>${d}</span></span>`;
+  function coefHTML(r) {
+    if (r.d === 1) {
+      if (r.n === 1) return '';
+      if (r.n === -1) return MINUS;
+      return rStr(r);
+    }
+    return (r.n < 0 ? MINUS : '') + frac(Math.abs(r.n), r.d);
+  }
+  const overDen = (top, A) => (A.n === 1 && A.d === 1 ? top : frac(top, rStr(A)));
+
+  function asymStr(h, k, slope) {
+    const lhs = k.n === 0 ? 'y' : `y ${k.n > 0 ? MINUS : '+'} ${rStr(absR(k))}`;
+    let ms = radStr(slope);
+    if (slope.exact && slope.m === 1 && slope.q.n === 1 && slope.q.d === 1) ms = '';
+    else if (ms.includes('/')) ms = '(' + ms + ')';
+    return `${lhs} = ±${ms}${term('x', h)}`;
+  }
+
+  /* ---------- 곡선별 계산 ---------- */
+  function solveParabola({ c4, h, k }, horiz) {
+    const p = div(c4, R(4));
+    const pv = val(p), hv = val(h), kv = val(k);
+    const V = P(E(h), E(k));
+    const F = horiz ? P(E(add(h, p)), E(k)) : P(E(h), E(add(k, p)));
+    const d = horiz ? sub(h, p) : sub(k, p);
+    const dirStr = (horiz ? 'x = ' : 'y = ') + rStr(d);
+    const axisStr = horiz ? 'y = ' + rStr(k) : 'x = ' + rStr(h);
+    const open = horiz ? (pv > 0 ? '오른쪽' : '왼쪽') : (pv > 0 ? '위쪽' : '아래쪽');
+
+    const eq = horiz
+      ? `${sq(term('y', k))} = ${coefHTML(c4)}${term('x', h)}`
+      : `${sq(term('x', h))} = ${coefHTML(c4)}${term('y', k)}`;
+
+    const steps = [
+      `${horiz ? '(y − k)² = 4p(x − h)' : '(x − h)² = 4p(y − k)'} 꼴이므로 4p = ${rStr(c4)}, p = ${rStr(p)}`,
+      `꼭짓점 (h, k) = ${ptS(V)}`,
+      `초점 ${horiz ? '(h + p, k)' : '(h, k + p)'} = ${ptS(F)}`,
+      `준선 ${horiz ? 'x = h − p' : 'y = k − p'} = ${rStr(d)}`,
+      `p ${pv > 0 ? '> 0' : '< 0'}이므로 ${open}으로 열린 포물선`,
+    ];
+
+    const items = [
+      ptItem('vertex', '꼭짓점 V', V),
+      ptItem('focus', '초점 F', F),
+      { el: 'directrix', name: '준선', value: dirStr, approx: isInt(val(d)) ? '' : `≈ ${dec(val(d))}` },
+      { el: 'axis', name: '축', value: axisStr, approx: '' },
+    ];
+
+    const pts = [ptDraw('vertex', 'V', V), ptDraw('focus', 'F', F)];
+    const lines = [
+      { el: 'directrix', kind: horiz ? 'x' : 'y', c: val(d), label: '준선' },
+      { el: 'axis', kind: horiz ? 'y' : 'x', c: horiz ? kv : hv, label: '축' },
+    ];
+    const a4 = Math.abs(4 * pv);
+    const bbox = horiz
+      ? [[hv, kv], [hv + pv, kv], [hv - pv, kv], [hv + 4 * pv, kv + a4], [hv + 4 * pv, kv - a4]]
+      : [[hv, kv], [hv, kv + pv], [hv, kv - pv], [hv + a4, kv + 4 * pv], [hv - a4, kv + 4 * pv]];
+
+    const curve = (vw) => {
+      const pts = [];
+      const N = 600;
+      const lo = horiz ? vw.ymin : vw.xmin, hi = horiz ? vw.ymax : vw.xmax;
+      for (let i = 0; i <= N; i++) {
+        const t = lo + (hi - lo) * i / N;
+        if (horiz) pts.push([hv + (t - kv) ** 2 / (4 * pv), t]);
+        else pts.push([t, kv + (t - hv) ** 2 / (4 * pv)]);
+      }
+      return [pts];
+    };
+
+    // 초점 드래그: 꼭짓점 고정, 축을 따라 p 변경
+    const onDrag = (x, y) => {
+      const np = horiz ? sub(x, h) : sub(y, k);
+      if (np.n === 0) return null;
+      return { c4: mul(R(4), np) };
+    };
+
+    const desc = `포물선, 꼭짓점 ${ptS(V)}, 초점 ${ptS(F)}, 준선 ${dirStr}`;
+    return { eq, steps, items, pts, lines, bbox, curve, desc, onDrag };
+  }
+
+  function solveEllipse({ A, B, h, k }) {
+    const a = sqrtR(A), b = sqrtR(B);
+    const hv = val(h), kv = val(k), av = a.v, bv = b.v;
+    const C = P(E(h), E(k));
+    const eq = `${overDen(sq(term('x', h)), A)} + ${overDen(sq(term('y', k)), B)} = 1`;
+    const steps = [`a² = ${rStr(A)}, b² = ${rStr(B)}이므로 a = ${radStr(a)}, b = ${radStr(b)}`];
+    const items = [ptItem('center', '중심 C', C)];
+    const pts = [ptDraw('center', 'C', C)];
+    const curve = () => {
+      const out = [];
+      for (let i = 0; i <= 360; i++) {
+        const t = (i / 360) * Math.PI * 2;
+        out.push([hv + av * Math.cos(t), kv + bv * Math.sin(t)]);
+      }
+      return [out];
+    };
+    const bbox = [[hv - av, kv - bv], [hv + av, kv + bv]];
+
+    if (A.n * B.d === B.n * A.d) {
+      steps.push(`a² = b²이므로 반지름이 ${radStr(a)}인 원입니다.`);
+      steps.push('c² = a² − b² = 0이므로 두 초점이 중심에 겹칩니다.');
+      items.push({ el: 'focus', name: '초점', value: '중심과 같음 (원)', approx: '' });
+      items.push({ el: 'vertex', name: '반지름', value: radStr(a), approx: radApx(a) });
+      return { eq, steps, items, pts, lines: [], bbox, curve, desc: `원, 중심 ${ptS(C)}, 반지름 ${radStr(a)}` };
+    }
+
+    const horiz = val(A) > val(B);
+    const c2 = horiz ? sub(A, B) : sub(B, A);
+    const c = sqrtR(c2);
+    const F1 = horiz ? P(comb(h, 1, c), E(k)) : P(E(h), comb(k, 1, c));
+    const F2 = horiz ? P(comb(h, -1, c), E(k)) : P(E(h), comb(k, -1, c));
+    const Ax = P(comb(h, 1, a), E(k)), Ax2 = P(comb(h, -1, a), E(k));
+    const By = P(E(h), comb(k, 1, b)), By2 = P(E(h), comb(k, -1, b));
+    const [M1, M2, m1, m2] = horiz ? [Ax, Ax2, By, By2] : [By, By2, Ax, Ax2];
+    const major = radMul(horiz ? a : b, R(2));
+    const minor = radMul(horiz ? b : a, R(2));
+
+    steps.push(horiz ? 'a > b이므로 장축이 x축에 평행합니다.' : 'b > a이므로 장축이 y축에 평행합니다.');
+    steps.push(`c² = ${horiz ? 'a² − b²' : 'b² − a²'} = ${rStr(c2)}이므로 c = ${radStr(c)}`);
+    steps.push(`초점 ${horiz ? '(h ± c, k)' : '(h, k ± c)'} → F ${ptS(F1)}, F′ ${ptS(F2)}`);
+    steps.push(`장축의 길이 ${horiz ? '2a' : '2b'} = ${radStr(major)}, 단축의 길이 ${horiz ? '2b' : '2a'} = ${radStr(minor)}`);
+
+    items.push(
+      ptItem('focus', '초점 F', F1),
+      ptItem('focus', '초점 F′', F2),
+      ptItem('vertex', '꼭짓점 A (장축)', M1),
+      ptItem('vertex', '꼭짓점 A′ (장축)', M2),
+      ptItem('vertex', '꼭짓점 B (단축)', m1),
+      ptItem('vertex', '꼭짓점 B′ (단축)', m2),
+      { el: 'vertex', name: '장축의 길이', value: radStr(major), approx: radApx(major) },
+      { el: 'vertex', name: '단축의 길이', value: radStr(minor), approx: radApx(minor) },
+    );
+    pts.push(
+      ptDraw('focus', 'F', F1), ptDraw('focus', 'F′', F2),
+      ptDraw('vertex', 'A', M1), ptDraw('vertex', 'A′', M2),
+      ptDraw('vertex', 'B', m1), ptDraw('vertex', 'B′', m2),
+    );
+    // 초점 드래그: 중심과 장축 길이 고정, c가 바뀌면 단축 쪽 분모 = (장축 쪽 분모) − c²
+    const onDrag = (x, y) => {
+      const cc = absR(horiz ? sub(x, h) : sub(y, k));
+      const cc2 = mul(cc, cc);
+      const big = horiz ? A : B;
+      if (cc.n === 0 || val(cc2) >= val(big)) return null;
+      return horiz ? { B: sub(A, cc2) } : { A: sub(B, cc2) };
+    };
+    return { eq, steps, items, pts, lines: [], bbox, curve, desc: `타원, 중심 ${ptS(C)}, 초점 ${ptS(F1)}, ${ptS(F2)}`, onDrag };
+  }
+
+  function solveHyperbola({ A, B, h, k }, horiz) {
+    const a = sqrtR(A), b = sqrtR(B);
+    const hv = val(h), kv = val(k), av = a.v, bv = b.v;
+    const c2 = add(A, B);
+    const c = sqrtR(c2);
+    const C = P(E(h), E(k));
+    const V1 = horiz ? P(comb(h, 1, a), E(k)) : P(E(h), comb(k, 1, b));
+    const V2 = horiz ? P(comb(h, -1, a), E(k)) : P(E(h), comb(k, -1, b));
+    const F1 = horiz ? P(comb(h, 1, c), E(k)) : P(E(h), comb(k, 1, c));
+    const F2 = horiz ? P(comb(h, -1, c), E(k)) : P(E(h), comb(k, -1, c));
+    const slope = sqrtR(div(B, A));
+    const asym = asymStr(h, k, slope);
+    const mainLen = radMul(horiz ? a : b, R(2));
+
+    const eq = `${overDen(sq(term('x', h)), A)} ${MINUS} ${overDen(sq(term('y', k)), B)} = ${horiz ? '1' : MINUS + '1'}`;
+    const steps = [
+      `a² = ${rStr(A)}, b² = ${rStr(B)}이므로 a = ${radStr(a)}, b = ${radStr(b)}`,
+      horiz ? '우변이 1이므로 주축이 x축에 평행합니다 (좌우로 열림).' : '우변이 −1이므로 주축이 y축에 평행합니다 (위아래로 열림).',
+      `c² = a² + b² = ${rStr(c2)}이므로 c = ${radStr(c)}`,
+      `꼭짓점 ${horiz ? '(h ± a, k)' : '(h, k ± b)'} → ${ptS(V1)}, ${ptS(V2)}`,
+      `초점 ${horiz ? '(h ± c, k)' : '(h, k ± c)'} → ${ptS(F1)}, ${ptS(F2)}`,
+      `점근선 y − k = ±(b/a)(x − h) → ${asym}`,
+    ];
+    const items = [
+      ptItem('center', '중심 C', C),
+      ptItem('vertex', '꼭짓점 A', V1),
+      ptItem('vertex', '꼭짓점 A′', V2),
+      ptItem('focus', '초점 F', F1),
+      ptItem('focus', '초점 F′', F2),
+      { el: 'vertex', name: '주축의 길이', value: radStr(mainLen), approx: radApx(mainLen) },
+      { el: 'asym', name: '점근선', value: asym, approx: slope.exact && slope.m === 1 ? '' : `기울기 ≈ ±${dec(slope.v)}` },
+    ];
+    const pts = [
+      ptDraw('center', 'C', C),
+      ptDraw('vertex', 'A', V1), ptDraw('vertex', 'A′', V2),
+      ptDraw('focus', 'F', F1), ptDraw('focus', 'F′', F2),
+    ];
+    const lines = [
+      { el: 'asym', kind: 'm', x0: hv, y0: kv, m: slope.v },
+      { el: 'asym', kind: 'm', x0: hv, y0: kv, m: -slope.v },
+    ];
+    const r = c.v * 1.6;
+    const bbox = [[hv - r, kv - r], [hv + r, kv + r]];
+    const curve = (vw) => {
+      const span = Math.max(vw.xmax - vw.xmin, vw.ymax - vw.ymin) + Math.abs(hv) + Math.abs(kv);
+      const T = Math.asinh(span / Math.min(av, bv)) + 0.2;
+      const N = 500;
+      const branches = [[], []];
+      for (let i = 0; i <= N; i++) {
+        const t = -T + (2 * T * i) / N;
+        const ch = Math.cosh(t), sh = Math.sinh(t);
+        if (horiz) {
+          branches[0].push([hv + av * ch, kv + bv * sh]);
+          branches[1].push([hv - av * ch, kv + bv * sh]);
+        } else {
+          branches[0].push([hv + av * sh, kv + bv * ch]);
+          branches[1].push([hv + av * sh, kv - bv * ch]);
+        }
+      }
+      return branches;
+    };
+    // 초점 드래그: 중심과 꼭짓점 고정, c가 바뀌면 나머지 분모 = c² − (주축 쪽 분모)
+    const onDrag = (x, y) => {
+      const cc = absR(horiz ? sub(x, h) : sub(y, k));
+      const cc2 = mul(cc, cc);
+      const main = horiz ? A : B;
+      if (val(cc2) <= val(main)) return null;
+      return horiz ? { B: sub(cc2, A) } : { A: sub(cc2, B) };
+    };
+    return { eq, steps, items, pts, lines, bbox, curve, desc: `쌍곡선, 중심 ${ptS(C)}, 초점 ${ptS(F1)}, ${ptS(F2)}, 점근선 ${asym}`, onDrag };
+  }
+
+  /* ---------- 종류별 설정 ---------- */
+  const TYPES = {
+    'parabola-h': {
+      fields: ['c4', 'h', 'k'],
+      template: `${sq('(y − k)')} = 4p(x − h)`,
+      solve: (v) => solveParabola(v, true),
+    },
+    'parabola-v': {
+      fields: ['c4', 'h', 'k'],
+      template: `${sq('(x − h)')} = 4p(y − k)`,
+      solve: (v) => solveParabola(v, false),
+    },
+    ellipse: {
+      fields: ['A', 'B', 'h', 'k'],
+      template: `${frac(sq('(x − h)'), sq('a'))} + ${frac(sq('(y − k)'), sq('b'))} = 1`,
+      solve: solveEllipse,
+    },
+    'hyperbola-h': {
+      fields: ['A', 'B', 'h', 'k'],
+      template: `${frac(sq('(x − h)'), sq('a'))} ${MINUS} ${frac(sq('(y − k)'), sq('b'))} = 1`,
+      solve: (v) => solveHyperbola(v, true),
+    },
+    'hyperbola-v': {
+      fields: ['A', 'B', 'h', 'k'],
+      template: `${frac(sq('(x − h)'), sq('a'))} ${MINUS} ${frac(sq('(y − k)'), sq('b'))} = ${MINUS}1`,
+      solve: (v) => solveHyperbola(v, false),
+    },
+  };
+
+  // 가상 예제 (수업용 샘플 방정식)
+  const EXAMPLES = [
+    { label: 'y² = 8x', type: 'parabola-h', c4: '8', h: '0', k: '0' },
+    { label: '(x − 2)² = −4(y − 1)', type: 'parabola-v', c4: '-4', h: '2', k: '1' },
+    { label: '(x − 1)²/9 + (y + 2)²/4 = 1', type: 'ellipse', A: '9', B: '4', h: '1', k: '-2' },
+    { label: 'x²/9 − y²/16 = 1', type: 'hyperbola-h', A: '9', B: '16', h: '0', k: '0' },
+    { label: 'x²/4 − y²/5 = −1', type: 'hyperbola-v', A: '4', B: '5', h: '0', k: '0' },
+  ];
+
+  const DEFAULTS = {
+    type: 'ellipse',
+    values: { c4: '8', A: '9', B: '4', h: '1', k: '-2' },
+    show: { focus: true, vertex: true, center: true, directrix: true, axis: true, asym: true },
+  };
+
+  /* ---------- 상태 저장 ---------- */
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return structuredClone(DEFAULTS);
+      const s = JSON.parse(raw);
+      return {
+        type: TYPES[s.type] ? s.type : DEFAULTS.type,
+        values: { ...DEFAULTS.values, ...(s.values || {}) },
+        show: { ...DEFAULTS.show, ...(s.show || {}) },
+      };
+    } catch (e) {
+      return structuredClone(DEFAULTS);
+    }
+  }
+  function saveState() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* 저장 불가 환경은 무시 */ }
+  }
+
+  const state = loadState();
+  let current = null;
+
+  /* ---------- 입력 처리 ---------- */
+  function readInputs() {
+    const vals = {};
+    let ok = true;
+    for (const f of TYPES[state.type].fields) {
+      const r = parseNum(state.values[f]);
+      let msg = '';
+      if (!r) msg = '숫자를 입력하세요 (예: 3, −2, 1/2, 0.5)';
+      else if (Math.abs(val(r)) > 1000) msg = '절댓값 1000 이하로 입력하세요';
+      else if (f === 'c4' && r.n === 0) msg = '4p는 0이 될 수 없습니다';
+      else if ((f === 'A' || f === 'B') && r.n <= 0) msg = '분모는 0보다 커야 합니다';
+      $('#f-' + f).setAttribute('aria-invalid', msg ? 'true' : 'false');
+      $('#e-' + f).textContent = msg;
+      if (msg) ok = false; else vals[f] = r;
+    }
+    return ok ? vals : null;
+  }
+
+  function update() {
+    const cfg = TYPES[state.type];
+    $('#template').innerHTML = cfg.template + '<small>표준형</small>';
+    $$('.field').forEach((el) => { el.hidden = !cfg.fields.includes(el.dataset.f); });
+    const vals = readInputs();
+    current = vals ? cfg.solve(vals) : null;
+    renderEquation();
+    renderToggles();
+    renderResult();
+    draw();
+    saveState();
+  }
+
+  function renderEquation() {
+    $('#equation').innerHTML = current ? current.eq : '<span class="error-box">입력값을 확인하세요</span>';
+  }
+
+  function usedEls() {
+    if (!current) return new Set();
+    return new Set([...current.items, ...current.pts, ...current.lines].map((x) => x.el));
+  }
+
+  function renderToggles() {
+    const used = usedEls();
+    $$('#toggles label[data-el]').forEach((lab) => {
+      const el = lab.dataset.el;
+      lab.hidden = !used.has(el);
+      lab.querySelector('input').checked = state.show[el];
+    });
+  }
+
+  const EL_COLOR = {
+    focus: 'var(--c-focus)', vertex: 'var(--c-vertex)', center: 'var(--c-center)',
+    directrix: 'var(--c-directrix)', axis: 'var(--c-axis)', asym: 'var(--c-asym)',
+  };
+
+  function renderResult() {
+    const box = $('#result');
+    box.textContent = '';
+    if (!current) {
+      box.innerHTML = '<p class="error-box">입력칸의 빨간 안내를 확인하세요.</p>';
+      return;
+    }
+    const used = usedEls();
+    const anyHidden = [...used].some((el) => !state.show[el]);
+
+    const ul = document.createElement('ul');
+    ul.className = 'items';
+    for (const it of current.items) {
+      const li = document.createElement('li');
+      li.dataset.el = it.el;
+      if (!state.show[it.el]) li.classList.add('masked');
+      li.innerHTML = `<span class="dot" style="--c:${EL_COLOR[it.el]}"></span>
+        <span class="name"></span><span class="val"><span class="v"></span>${it.approx ? '<small></small>' : ''}</span>`;
+      li.querySelector('.name').textContent = it.name;
+      li.querySelector('.v').textContent = it.value;
+      if (it.approx) li.querySelector('small').textContent = it.approx;
+      ul.appendChild(li);
+    }
+    box.appendChild(ul);
+
+    const det = document.createElement('details');
+    det.className = 'steps' + (anyHidden ? ' masked' : '');
+    det.open = true;
+    det.innerHTML = '<summary>풀이 과정</summary><ol></ol>';
+    const ol = det.querySelector('ol');
+    for (const s of current.steps) {
+      const li = document.createElement('li');
+      li.textContent = s;
+      ol.appendChild(li);
+    }
+    if (anyHidden) {
+      const p = document.createElement('p');
+      p.className = 'masknote';
+      p.textContent = '가린 요소가 있어 풀이 과정도 가려 두었습니다. 모든 체크를 켜면 다시 보입니다.';
+      det.appendChild(p);
+    }
+    box.appendChild(det);
+  }
+
+  /* ---------- 그래프 ---------- */
+  const canvas = $('#canvas');
+  const ctx = canvas.getContext('2d');
+  const css = getComputedStyle(document.documentElement);
+  const col = (name) => css.getPropertyValue('--c-' + name).trim();
+
+  function makeView(pts, W, H) {
+    const xs = pts.map((p) => p[0]).concat(0);
+    const ys = pts.map((p) => p[1]).concat(0);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs);
+    const y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const w = Math.max(x1 - x0, 2) * 1.3 + 1;
+    const hh = Math.max(y1 - y0, 2) * 1.3 + 1;
+    const s = Math.min(W / w, H / hh);
+    return { s, W, H, xmin: cx - W / 2 / s, xmax: cx + W / 2 / s, ymin: cy - H / 2 / s, ymax: cy + H / 2 / s };
+  }
+
+  function niceStep(r) {
+    const p = 10 ** Math.floor(Math.log10(r));
+    const f = r / p;
+    return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p;
+  }
+  const tick = (v) => String(parseFloat(v.toFixed(6))).replace('-', MINUS);
+
+  let lastView = null;
+  let drag = null; // { view } 드래그 중일 때만 값이 있음
+
+  /* ---------- 초점 드래그 ---------- */
+  const rIn = (r) => (r.d === 1 ? String(r.n) : r.n + '/' + r.d);
+  const toMath = (vw, px, py) => [vw.xmin + px / vw.s, vw.ymin + (vw.H - py) / vw.s];
+
+  function hitFocus(px, py) {
+    if (!current || !current.onDrag || !lastView || !state.show.focus) return false;
+    const vw = lastView;
+    return current.pts.some((p) => p.el === 'focus'
+      && Math.hypot((p.x - vw.xmin) * vw.s - px, vw.H - (p.y - vw.ymin) * vw.s - py) <= 20);
+  }
+
+  // 포인터 위치를 캔버스 기준 CSS 픽셀로 변환
+  function pos(e) {
+    const r = canvas.getBoundingClientRect();
+    return [e.clientX - r.left, e.clientY - r.top];
+  }
+
+  function snapR(v, snap) {
+    return parseNum(String(parseFloat((Math.round(v / snap) * snap).toFixed(3))));
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    if (!hitFocus(...pos(e))) return;
+    e.preventDefault();
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 캡처 불가 시에도 드래그는 동작 */ }
+    drag = { view: lastView };
+    canvas.style.cursor = 'grabbing';
+    draw();
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!drag) {
+      canvas.style.cursor = hitFocus(...pos(e)) ? 'grab' : '';
+      return;
+    }
+    const [mx, my] = toMath(drag.view, ...pos(e));
+    const snap = drag.view.step / 2;
+    const next = current && current.onDrag(snapR(mx, snap), snapR(my, snap));
+    if (!next) return;
+    let changed = false;
+    for (const [f, r] of Object.entries(next)) {
+      const s = rIn(r);
+      if (state.values[f] !== s) { state.values[f] = s; changed = true; }
+    }
+    if (changed) { syncInputs(); update(); }
+  });
+
+  function endDrag() {
+    if (!drag) return;
+    drag = null;
+    canvas.style.cursor = '';
+    update(); // 화면 범위를 새 곡선에 맞게 다시 맞춤
+  }
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+
+  function draw() {
+    const wrap = $('#graphWrap');
+    const W = wrap.clientWidth;
+    if (!W) return;
+    const H = Math.round(Math.max(320, Math.min(W * 0.8, window.innerHeight * 0.72)));
+    const dpr = window.devicePixelRatio || 1;
+    canvas.style.height = H + 'px';
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+
+    // 드래그 중에는 화면 범위를 고정해 초점이 커서를 따라가게 함
+    const vw = drag && drag.view.W === W ? drag.view : makeView(current ? current.bbox : [[-5, -5], [5, 5]], W, H);
+    const X = (x) => (x - vw.xmin) * vw.s;
+    const Y = (y) => H - (y - vw.ymin) * vw.s;
+
+    // 격자와 눈금
+    const step = niceStep((vw.xmax - vw.xmin) / (W < 600 ? 7 : 11));
+    vw.step = step;
+    lastView = vw;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#eef2f7';
+    ctx.beginPath();
+    for (let x = Math.ceil(vw.xmin / step) * step; x <= vw.xmax; x += step) { ctx.moveTo(X(x), 0); ctx.lineTo(X(x), H); }
+    for (let y = Math.ceil(vw.ymin / step) * step; y <= vw.ymax; y += step) { ctx.moveTo(0, Y(y)); ctx.lineTo(W, Y(y)); }
+    ctx.stroke();
+
+    const ox = X(0), oy = Y(0);
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(0, oy); ctx.lineTo(W, oy);
+    ctx.moveTo(ox, 0); ctx.lineTo(ox, H);
+    ctx.stroke();
+
+    ctx.fillStyle = '#475569';
+    ctx.font = '14px "Malgun Gothic", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    const labY = Math.min(Math.max(oy + 5, 2), H - 18);
+    for (let x = Math.ceil(vw.xmin / step) * step; x <= vw.xmax; x += step) {
+      if (Math.abs(x) < step / 2) continue;
+      ctx.fillText(tick(x), X(x), labY);
+    }
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    const labX = Math.min(Math.max(ox - 6, 30), W - 4);
+    for (let y = Math.ceil(vw.ymin / step) * step; y <= vw.ymax; y += step) {
+      if (Math.abs(y) < step / 2) continue;
+      ctx.fillText(tick(y), labX, Y(y));
+    }
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText('O', ox - 4, oy + 4);
+    ctx.font = 'italic 18px "Cambria Math", "Times New Roman", serif';
+    ctx.fillStyle = '#334155';
+    ctx.fillText('x', W - 6, oy + 4);
+    ctx.textAlign = 'left';
+    ctx.fillText('y', ox + 6, 4);
+
+    if (!current) return;
+
+    // 준선·대칭축·점근선
+    const LINE_STYLE = { directrix: [10, 6], axis: [3, 6], asym: [8, 6] };
+    for (const l of current.lines) {
+      if (!state.show[l.el]) continue;
+      ctx.save();
+      ctx.strokeStyle = col(l.el);
+      ctx.lineWidth = l.el === 'axis' ? 2 : 2.5;
+      ctx.setLineDash(LINE_STYLE[l.el]);
+      ctx.beginPath();
+      if (l.kind === 'x') { ctx.moveTo(X(l.c), 0); ctx.lineTo(X(l.c), H); }
+      else if (l.kind === 'y') { ctx.moveTo(0, Y(l.c)); ctx.lineTo(W, Y(l.c)); }
+      else {
+        ctx.moveTo(X(vw.xmin), Y(l.y0 + l.m * (vw.xmin - l.x0)));
+        ctx.lineTo(X(vw.xmax), Y(l.y0 + l.m * (vw.xmax - l.x0)));
+      }
+      ctx.stroke();
+      ctx.restore();
+      if (l.label) {
+        ctx.save();
+        ctx.font = 'bold 15px "Malgun Gothic", system-ui, sans-serif';
+        ctx.fillStyle = col(l.el);
+        ctx.textBaseline = 'top';
+        ctx.textAlign = 'left';
+        if (l.kind === 'x') haloText(l.label, X(l.c) + 6, 8);
+        else { ctx.textAlign = 'right'; haloText(l.label, W - 8, Y(l.c) + 4); }
+        ctx.restore();
+      }
+    }
+
+    // 곡선
+    ctx.save();
+    ctx.strokeStyle = col('curve');
+    ctx.lineWidth = 3.5;
+    ctx.lineJoin = 'round';
+    for (const poly of current.curve(vw)) {
+      ctx.beginPath();
+      let pen = false;
+      for (const [x, y] of poly) {
+        const px = X(x), py = Y(y);
+        if (!isFinite(px) || !isFinite(py) || Math.abs(px) > 1e5 || Math.abs(py) > 1e5) { pen = false; continue; }
+        if (pen) ctx.lineTo(px, py); else { ctx.moveTo(px, py); pen = true; }
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 점과 이름표
+    for (const p of current.pts) {
+      if (!state.show[p.el]) continue;
+      const px = X(p.x), py = Y(p.y);
+      ctx.save();
+      if (p.el === 'focus' && current.onDrag) {
+        // 드래그할 수 있다는 표시
+        ctx.strokeStyle = col('focus');
+        ctx.lineWidth = 2;
+        ctx.setLineDash(drag ? [] : [4, 3]);
+        ctx.beginPath();
+        ctx.arc(px, py, drag ? 15 : 13, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.fillStyle = col(p.el);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px, py, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.font = 'bold 18px "Cambria Math", "Times New Roman", serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      haloText(p.label, px + 8, py - 6);
+      ctx.restore();
+    }
+
+    canvas.setAttribute('aria-label', '그래프: ' + current.desc);
+  }
+
+  function haloText(text, x, y) {
+    const fill = ctx.fillStyle;
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#fff';
+    ctx.lineJoin = 'round';
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = fill;
+    ctx.fillText(text, x, y);
+  }
+
+  /* ---------- 이벤트 ---------- */
+  function syncInputs() {
+    for (const f of ['c4', 'A', 'B', 'h', 'k']) $('#f-' + f).value = state.values[f];
+    $$('input[name="type"]').forEach((r) => { r.checked = r.value === state.type; });
+  }
+
+  $('#types').addEventListener('change', (e) => {
+    if (e.target.name === 'type') { state.type = e.target.value; update(); }
+  });
+  for (const f of ['c4', 'A', 'B', 'h', 'k']) {
+    $('#f-' + f).addEventListener('input', (e) => { state.values[f] = e.target.value; update(); });
+  }
+  $('#toggles').addEventListener('change', (e) => {
+    const lab = e.target.closest('label[data-el]');
+    if (!lab) return;
+    state.show[lab.dataset.el] = e.target.checked;
+    update();
+  });
+
+  const exBox = $('#examples');
+  for (const ex of EXAMPLES) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = ex.label;
+    btn.addEventListener('click', () => {
+      state.type = ex.type;
+      for (const f of ['c4', 'A', 'B', 'h', 'k']) if (ex[f] !== undefined) state.values[f] = ex[f];
+      syncInputs();
+      update();
+    });
+    exBox.appendChild(btn);
+  }
+
+  let lastW = 0;
+  new ResizeObserver(() => {
+    const w = $('#graphWrap').clientWidth;
+    if (w !== lastW) { lastW = w; draw(); }
+  }).observe($('#graphWrap'));
+  window.addEventListener('resize', draw);
+
+  syncInputs();
+  update();
+})();
+</script>
+</body>
+</html>
